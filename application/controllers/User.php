@@ -13,33 +13,15 @@ public function dashboard(){
     if($this->session->user && $this->session->logged_in && $this->session->id){
         $id = $this->session->id;
         $city = $this->session->city;
-        
         $status = true;
     }
     else{ $status = false;
         echo "Access Denied !unauthorized access";
     }
     if($status && $id && $city){
-        $curl = curl_init();
-        $API = '161dd4f51faf20d6cfd1c2f86c6a7079';
-        curl_setopt_array($curl, array(
-        CURLOPT_URL => "api.openweathermap.org/data/2.5/weather?q=".$city."&APPID=".$API."",
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => "GET",
-        CURLOPT_HTTPHEADER => array(
-            "cache-control: no-cache"
-        ),
-        ));
-
-    $response = curl_exec($curl);
-    
-    $err = curl_error($curl);
-    curl_close($curl);
+        $response = fetchWeatherReport($city);
     if($response)
     {
-        $response = json_decode($response, true);
         // echo "<pre>";
         // print_r($response);exit;
         $this->data['response'] = $response;
@@ -55,11 +37,13 @@ public function dashboard(){
    
 }
 
-public function save_user(){
+public function save_user($id=null){
     // print_r($_POST);exit;
      $this->form_validation->set_rules('username', 'Username', 'required');
      $this->form_validation->set_rules('email', 'email', 'required');
-     $this->form_validation->set_rules('password', 'Password', 'required');
+     if(!$id){
+        $this->form_validation->set_rules('password', 'Password', 'required');   
+     }
      $this->form_validation->set_rules('city', 'city', 'required');
      
      if ($this->form_validation->run() == FALSE)
@@ -72,8 +56,11 @@ public function save_user(){
              $username = $this->input->post('username');
              $email = $this->input->post('email');
              $password = $this->input->post('password');
-             $password = password_hash($password, PASSWORD_BCRYPT,[12]);
+             
              $city=$this->input->post('city');
+             $image =null;
+             if($_FILES['image']['name'])
+             {
              $config['upload_path'] = './uploads/user';
              $config['allowed_types'] = 'gif|jpg|png';
              $config['max_size'] = '2097152';
@@ -95,30 +82,57 @@ public function save_user(){
                      $image = $img['upload_data']['file_name']; 
                              
                  }
- 
+            }
                  $data = array('table'=>'users',
                              'val'=>array(
                                  'username'=>$username,
                                  'email'=>$email,
-                                 'password'=>$password,
-                                 'city'=>$city,
-                                 'image'=>$image,
-                                 'active'=>'1'
+                                 'city'=>$city
                              ));
-                 $this->db->insert($data['table'],$data['val']);
-                 $user_id = $this->db->insert_id();
-             if($user_id){
-                 redirect('admin/login_user','refresh');
-             }else{
-                 $this->session->set_flashdata('error', 'Oops! something went wrong please try again');
-                 redirect('user/register_user');
-             }
+            if($password){
+                $password = password_hash($password, PASSWORD_BCRYPT,[12]);
+                 $data['val']['password']=$password;
+                }
+            if($image){
+                $data['val']['image']=$image;
+            }
+            if($id){
+                $this->db->where('id',$id);
+                $this->db->update($data['table'],$data['val']);   
+                $this->session->set_flashdata('error', 'user updated successfully');
+                    redirect('admin/dashboard','refresh'); 
+                }else{
+                    $data['val']['active']='1';
+                    $this->db->insert($data['table'],$data['val']);
+                    $user_id = $this->db->insert_id();
+                    if($user_id){
+                    $this->session->set_flashdata('error', 'user created successfully');
+                        redirect('admin/login_user','refresh');
+                    }else{
+                    $this->session->set_flashdata('error', 'Oops! something went wrong please try again');
+                        }
+                }
+                 
      }
  }
 
- public function register_user(){
+ public function register_user($uid=null){
+    //uid = user id
+    if($uid){
+        if($this->session->admin && $this->session->logged_in && $this->session->id)
+        {
+         $user =  $this->db->query("SELECT * FROM `users` WHERE id='$uid'");
+        $info = $user->row(0);
+        $this->data['user'] = $info;
+        }else{
+            $this->session->set_flashdata('error', 'Access Denied !unauthorized access');
+            $this->logout();
+              redirect('admin/login_user','refresh');
+        }
+        
+    }else{ $this->data['a'] = ''; }
     $this->load->view('header');
-    $this->load->view('register');
+    $this->load->view('register',$this->data);
     $this->load->view('footer');
  }
 

@@ -56,13 +56,20 @@ public function logout(){
     {  
         $email = $this->input->post('email');
         $password = $this->input->post('password');
-       $user = $this->db->query("SELECT `id`,`password`,`admin`,city FROM `users` WHERE `email`='$email'");
+       $user = $this->db->query("SELECT * FROM `users` WHERE `email`='$email'");
        $user_info = $user->row(0);
+       if($user_info->active=='0'){
+        $this->session->set_flashdata('error', 'Sorry!! Your account is temporarily deactivated. Please contact website admin');
+        redirect('admin/login_user');
+       }
        if(password_verify($password,$user_info->password)){
             if($user_info->admin==1){
                 $admin = array(
                     'admin'  => TRUE,
                     'id'     => $user_info->id,
+                    'city'   => $user_info->city,
+                    'username'   => $user_info->username,
+                    'image'=> $user_info->image,
                     'logged_in' => TRUE
                 );
                 $this->session->set_userdata($admin);
@@ -72,6 +79,8 @@ public function logout(){
                     'user'  => TRUE,
                     'id'     => $user_info->id,
                     'city'   => $user_info->city,
+                    'username'   => $user_info->username,
+                    'image'=> $user_info->image,
                     'logged_in' => TRUE
                 );
                 $this->session->set_userdata($user0);
@@ -83,6 +92,46 @@ public function logout(){
         redirect('admin/login_user');
        }
 
+    }
+ }
+
+ public function user_status(){
+    $uid = $this->input->post('id');
+    $status = $this->input->post('status');
+   // print_r($_POST); exit;
+    if($uid){
+        if($status=='0'){
+            $this->db->query("UPDATE `users` SET `active`='0' WHERE id='$uid'");
+            $data = array('msg'=>'Activate');
+        }else{
+            $this->db->query("UPDATE `users` SET `active`='1' WHERE id='$uid'");
+            $data = array('msg'=>'Deactivate'); 
+        }
+        echo json_encode($data);
+    }else{
+        echo "something went wrong";
+    }
+ }
+
+ public function weatherReport(){
+    if($this->session->admin && $this->session->logged_in && $this->session->id){
+        $status = true;
+        $city = $this->session->city;
+        $response = fetchWeatherReport($city);
+        if($response)
+        {
+            // echo "<pre>";
+            // print_r($response);exit;
+            $this->data['response'] = $response;
+            $this->data['city'] = $city;
+        }else{
+            $this->data['response'] = '';
+        }
+            $this->load->view('header');
+            $this->load->view('user_dashboard',$this->data);
+            $this->load->view('footer');
+    }else{
+        echo "Access Denied !unauthorized access"; exit;
     }
  }
     

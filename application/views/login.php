@@ -8,6 +8,9 @@ if($message){
   }
 ?>
 </div>
+<div class="row justify-content-center mb-2">
+<h2>LogIn</h2>
+</div>
 <form action="<?php echo base_url(); ?>admin/login" method="post" id="loginForm">
   <div class="form-group">
     <label >Email address</label>
@@ -20,7 +23,7 @@ if($message){
     <span class="error"></span>
   </div>
   <button type="submit" class="btn btn-primary">Submit</button>
-  <a href="<?php echo base_url(); ?>register" class="btn btn-primary ml-2" >Signup</a>
+  <a href="<?php echo base_url(); ?>register" class="btn btn-secondary ml-2" >Signup</a>
   
 </form>
 <script>
